@@ -138,6 +138,10 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         try {
             dataSourceMapper.insert(dataSource);
             putMsg(result, Status.SUCCESS);
+            // 添加已成功入库的数据源id. Add by solan on 20250527
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", dataSource.getId());
+            result.setExtra(map);
             permissionPostHandle(AuthorizationType.DATASOURCE, loginUser.getId(),
                     Collections.singletonList(dataSource.getId()), logger);
         } catch (DuplicateKeyException ex) {
