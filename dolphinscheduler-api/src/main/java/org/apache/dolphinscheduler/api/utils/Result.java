@@ -20,6 +20,7 @@ package org.apache.dolphinscheduler.api.utils;
 import org.apache.dolphinscheduler.api.enums.Status;
 
 import java.text.MessageFormat;
+import java.util.Map;
 
 /**
  * result
@@ -27,6 +28,7 @@ import java.text.MessageFormat;
  * @param <T> T
  */
 public class Result<T> {
+
     /**
      * status
      */
@@ -56,7 +58,7 @@ public class Result<T> {
             this.msg = status.getMsg();
         }
     }
-    
+
     public Result(Integer code, String msg, T data) {
         this.code = code;
         this.msg = msg;
@@ -73,7 +75,7 @@ public class Result<T> {
     public static <T> Result<T> success(T data) {
         return new Result<>(Status.SUCCESS.getCode(), Status.SUCCESS.getMsg(), data);
     }
-    
+
     public static Result success() {
         return success(null);
     }
@@ -135,6 +137,14 @@ public class Result<T> {
         this.data = data;
     }
 
+    private Map<String, Object> extra;
+
+    public void setExtra(Map<String, Object> map) {
+        this.extra = map;
+    }
+    public Map<String, Object> getExtra() {
+        return this.extra;
+    }
     @Override
     public String toString() {
         return "Status{"

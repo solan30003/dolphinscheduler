@@ -42,7 +42,7 @@ public class BaseController {
     /**
      * check params
      *
-     * @param pageNo page number
+     * @param pageNo   page number
      * @param pageSize page size
      * @return check result code
      */
@@ -100,7 +100,12 @@ public class BaseController {
         if (status == Status.SUCCESS) {
             String msg = Status.SUCCESS.getMsg();
             Object datalist = result.get(Constants.DATA_LIST);
-            return success(msg, datalist);
+            // �����չ������extra solan 20250529
+            Result resultTmp = success(msg, datalist);
+            if (result.containsKey("extra")) {
+                resultTmp.setExtra((Map<String, Object>) result.get("extra"));
+            }
+            return resultTmp;
         } else {
             Integer code = status.getCode();
             String msg = (String) result.get(Constants.MSG);
@@ -138,7 +143,7 @@ public class BaseController {
     /**
      * return data no paging
      *
-     * @param msg success message
+     * @param msg  success message
      * @param list data list
      * @return success result code
      */
@@ -160,7 +165,7 @@ public class BaseController {
      * return the data use Map format, for example, passing the value of key, value, passing a value
      * eg. "/user/add"  then return user name: zhangsan
      *
-     * @param msg message
+     * @param msg    message
      * @param object success object data
      * @return success result code
      */
@@ -171,10 +176,10 @@ public class BaseController {
     /**
      * return data with paging
      *
-     * @param totalList success object list
+     * @param totalList   success object list
      * @param currentPage current page
-     * @param total total
-     * @param totalPage total page
+     * @param total       total
+     * @param totalPage   total page
      * @return success result code
      */
     public Result success(Object totalList, Integer currentPage,
@@ -196,7 +201,7 @@ public class BaseController {
      * error handle
      *
      * @param code result code
-     * @param msg result message
+     * @param msg  result message
      * @return error result code
      */
     public Result error(Integer code, String msg) {
@@ -209,8 +214,8 @@ public class BaseController {
     /**
      * put message to map
      *
-     * @param result result
-     * @param status status
+     * @param result       result
+     * @param status       status
      * @param statusParams object messages
      */
     protected void putMsg(Map<String, Object> result, Status status, Object... statusParams) {
@@ -225,8 +230,8 @@ public class BaseController {
     /**
      * put message to result object
      *
-     * @param result result
-     * @param status status
+     * @param result       result
+     * @param status       status
      * @param statusParams status parameters
      */
     protected void putMsg(Result result, Status status, Object... statusParams) {
@@ -243,7 +248,7 @@ public class BaseController {
     /**
      * get result
      *
-     * @param msg message
+     * @param msg  message
      * @param list object list
      * @return result code
      */
@@ -253,6 +258,16 @@ public class BaseController {
         result.setMsg(msg);
 
         result.setData(list);
+        return result;
+    }
+
+    private Result getResult(String msg, Object list, Map<String, Object> extra) {
+        Result result = new Result();
+        result.setCode(Status.SUCCESS.getCode());
+        result.setMsg(msg);
+
+        result.setData(list);
+        result.setExtra(extra);
         return result;
     }
 }

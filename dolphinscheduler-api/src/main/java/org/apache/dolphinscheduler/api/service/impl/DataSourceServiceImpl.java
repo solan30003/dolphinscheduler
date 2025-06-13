@@ -92,7 +92,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     /**
      * create data source
      *
-     * @param loginUser login user
+     * @param loginUser       login user
      * @param datasourceParam datasource parameters
      * @return create result code
      */
@@ -138,6 +138,10 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         try {
             dataSourceMapper.insert(dataSource);
             putMsg(result, Status.SUCCESS);
+            // 添加已成功入库的数据源id. Add by solan on 20250527
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", dataSource.getId());
+            result.setExtra(map);
             permissionPostHandle(AuthorizationType.DATASOURCE, loginUser.getId(),
                     Collections.singletonList(dataSource.getId()), logger);
         } catch (DuplicateKeyException ex) {
@@ -152,7 +156,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
      * updateProcessInstance datasource
      *
      * @param loginUser login user
-     * @param id data source id
+     * @param id        data source id
      * @return update result code
      */
     @Override
@@ -251,8 +255,8 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
      *
      * @param loginUser login user
      * @param searchVal search value
-     * @param pageNo page number
-     * @param pageSize page size
+     * @param pageNo    page number
+     * @param pageSize  page size
      * @return data source list page
      */
     @Override
@@ -309,7 +313,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
      * query data resource list
      *
      * @param loginUser login user
-     * @param type data source type
+     * @param type      data source type
      * @return data source list page
      */
     @Override
@@ -357,7 +361,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     /**
      * check connection
      *
-     * @param type data source type
+     * @param type            data source type
      * @param connectionParam connectionParam
      * @return true if connect successfully, otherwise false
      * @return true if connect successfully, otherwise false
@@ -403,7 +407,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     /**
      * delete datasource
      *
-     * @param loginUser login user
+     * @param loginUser    login user
      * @param datasourceId data source id
      * @return delete result code
      */
@@ -438,7 +442,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
      * unauthorized datasource
      *
      * @param loginUser login user
-     * @param userId user id
+     * @param userId    user id
      * @return unauthed data source result code
      */
     @Override
@@ -475,7 +479,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
      * authorized datasource
      *
      * @param loginUser login user
-     * @param userId user id
+     * @param userId    user id
      * @return authorized result code
      */
     @Override
@@ -495,6 +499,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         DataSource dataSource = dataSourceMapper.selectById(datasourceId);
 
         List<String> tableList = null;
+        List<Map<String, String>> tblDetails = new ArrayList<>();
         BaseConnectionParam connectionParam =
                 (BaseConnectionParam) DataSourceUtils.buildConnectionParams(
                         dataSource.getType(),
@@ -537,6 +542,18 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             while (tables.next()) {
                 String name = tables.getString(TABLE_NAME);
                 tableList.add(name);
+                // 添加extra，表的详细信息 solan 20250529
+                Map<String, String> map = new HashMap<>();
+                map.put("TABLE_NAME", name);
+                // 表类型：TABLE：普通表；VIEW：视图；SYSTEM TABLE：系统表；GLOBAL TEMPORARY：全局临时表；LOCAL TEMPORARY：局部临时表；ALIAS：别名
+                map.put("TABLE_TYPE", tables.getString("TABLE_TYPE"));
+                // 注释
+                map.put("REMARKS", tables.getString("REMARKS"));
+                // 所属模式，数据库用户或命名空间
+                map.put("TABLE_SCHEM", tables.getString("TABLE_SCHEM"));
+                // 所属目录或数据库实例
+                map.put("TABLE_CAT", tables.getString("TABLE_CAT"));
+                tblDetails.add(map);
             }
 
         } catch (Exception e) {
@@ -551,6 +568,9 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         List<ParamsOptions> options = getParamsOptions(tableList);
 
         result.put(Constants.DATA_LIST, options);
+        Map<String, List<Map<String, String>>> mapTblDetails = new HashMap<>();
+        mapTblDetails.put("tblDetails", tblDetails);
+        result.put("extra", mapTblDetails);
         putMsg(result, Status.SUCCESS);
         return result;
     }
@@ -604,6 +624,98 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         List<ParamsOptions> options = getParamsOptions(columnList);
 
         result.put(Constants.DATA_LIST, options);
+        putMsg(result, Status.SUCCESS);
+        return result;
+    }
+
+    /**
+     * 查询table的列的详细信息
+     *
+     * @param datasourceId datasourceId
+     * @param tableName    tableName
+     * @return map
+     */
+    @Override
+    public Map<String, Object> getTableColumnsDetails(Integer datasourceId, String tableName) {
+        Map<String, Object> result = new HashMap<>();
+
+        DataSource dataSource = dataSourceMapper.selectById(datasourceId);
+        BaseConnectionParam connectionParam =
+                (BaseConnectionParam) DataSourceUtils.buildConnectionParams(
+                        dataSource.getType(),
+                        dataSource.getConnectionParams());
+
+        if (null == connectionParam) {
+            putMsg(result, Status.DATASOURCE_CONNECT_FAILED);
+            return result;
+        }
+
+        Connection connection =
+                DataSourceUtils.getConnection(dataSource.getType(), connectionParam);
+        List<Map<String, Object>> mapColumn = new ArrayList<>();
+        ResultSet rs = null;
+
+        try {
+            String database = connectionParam.getDatabase();
+            if (null == connection) {
+                return result;
+            }
+
+            DatabaseMetaData metaData = connection.getMetaData();
+
+            if (dataSource.getType() == DbType.ORACLE) {
+                database = null;
+            }
+            // 1. 获取主键列名称
+            Set<String> primaryKeyColumns = new HashSet<>();
+            try (ResultSet pkRs = metaData.getPrimaryKeys(database, null, tableName)) {
+                while (pkRs.next()) {
+                    primaryKeyColumns.add(pkRs.getString("COLUMN_NAME"));
+                }
+            }
+            rs = metaData.getColumns(database, null, tableName, "%");
+            if (rs == null) {
+                return result;
+            }
+            while (rs.next()) {
+                Map<String, Object> mapColDetails = new HashMap<>();
+                // 列名
+                String colName = rs.getString(COLUMN_NAME);
+                mapColDetails.put(COLUMN_NAME, colName);
+                // 数据类型（java.sql.Types的SQL类型整数代码）
+                mapColDetails.put("DATA_TYPE", rs.getInt("DATA_TYPE"));
+                // 数据类型名称
+                mapColDetails.put("TYPE_NAME", rs.getString("TYPE_NAME"));
+                mapColDetails.put("COLUMN_SIZE", rs.getInt("COLUMN_SIZE"));
+                // 小数点后的位数
+                mapColDetails.put("DECIMAL_DIGITS", rs.getInt("DECIMAL_DIGITS"));
+                // 0-可能不允许NULL值；1-肯定允许NULL值；2-未知的
+                mapColDetails.put("NULLABLE", rs.getInt("NULLABLE"));
+                // 列的注释
+                mapColDetails.put("REMARKS", rs.getString("REMARKS"));
+                // 默认值
+                mapColDetails.put("COLUMN_DEF", rs.getString("COLUMN_DEF"));
+                // 表中的列的索引（从1开始）
+                mapColDetails.put("ORDINAL_POSITION", rs.getInt("ORDINAL_POSITION"));
+                // YES:列可以包含NULL;NO:不能包含NULL;空字符串"":未知
+                mapColDetails.put("IS_NULLABLE", rs.getString("IS_NULLABLE"));
+                // 是否自动递增：YES--自动递增；NO--不自动递增；空字符串""--不确定
+                mapColDetails.put("IS_AUTOINCREMENT", rs.getString("IS_AUTOINCREMENT"));
+                // 是否是生成的列
+                mapColDetails.put("IS_GENERATEDCOLUMN", rs.getString("IS_GENERATEDCOLUMN"));
+
+                // 是否主键
+                mapColDetails.put("IS_PRIMARY_KEY", primaryKeyColumns.contains(colName));
+
+                mapColumn.add(mapColDetails);
+            }
+        } catch (Exception e) {
+            logger.error(e.toString(), e);
+        } finally {
+            closeResult(rs);
+            releaseConnection(connection);
+        }
+        result.put(Constants.DATA_LIST, mapColumn);
         putMsg(result, Status.SUCCESS);
         return result;
     }

@@ -142,5 +142,13 @@ public interface DataSourceService {
      * @param tableName
      * @return
      */
-    Map<String, Object> getTableColumns(Integer datasourceId,String tableName);
+    Map<String, Object> getTableColumns(Integer datasourceId, String tableName);
+
+    /**
+     * 查询table的列的详细信息
+     * @param datasourceId datasourceId
+     * @param tableName tableName
+     * @return map
+     */
+    Map<String, Object> getTableColumnsDetails(Integer datasourceId, String tableName);
 }

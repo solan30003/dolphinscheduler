@@ -365,4 +365,18 @@ public class DataSourceController extends BaseController {
         Map<String, Object> result = dataSourceService.getTableColumns(datasourceId, tableName);
         return returnDataList(result);
     }
+    // 添加查询指定表的列的详细信息 20250529
+    @ApiOperation(value = "tableColumnsDetails", notes = "GET_DATASOURCE_TABLE_COLUMNS_NOTES")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "datasourceId", value = "DATA_SOURCE_ID", required = true, dataTypeClass = int.class, example = "1"),
+            @ApiImplicitParam(name = "tableName", value = "TABLE_NAME", required = true, dataTypeClass = String.class, example = "test")
+    })
+    @GetMapping(value = "/tableColumnsDetails")
+    @ResponseStatus(HttpStatus.OK)
+    @ApiException(GET_DATASOURCE_TABLE_COLUMNS_ERROR)
+    public Result getTableColumnsDetails(@RequestParam("datasourceId") Integer datasourceId,
+                                         @RequestParam("tableName") String tableName) {
+        Map<String, Object> result = dataSourceService.getTableColumnsDetails(datasourceId, tableName);
+        return returnDataList(result);
+    }
 }
