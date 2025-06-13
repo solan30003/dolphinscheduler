@@ -100,7 +100,7 @@ public class BaseController {
         if (status == Status.SUCCESS) {
             String msg = Status.SUCCESS.getMsg();
             Object datalist = result.get(Constants.DATA_LIST);
-            // �����չ������extra solan 20250529
+            // 添加扩展数据项extra solan 20250529
             Result resultTmp = success(msg, datalist);
             if (result.containsKey("extra")) {
                 resultTmp.setExtra((Map<String, Object>) result.get("extra"));
