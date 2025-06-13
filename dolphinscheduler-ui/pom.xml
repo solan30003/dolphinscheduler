@@ -36,7 +36,7 @@
 
     <profiles>
         <profile>
-            <id>release</id>
+            <id>release1</id>
             <build>
                 <plugins>
                     <plugin>
